@@ -182,6 +182,7 @@ export interface Order {
   manualProductList?: string;
   notFoundMedicines?: string;
   consentToConfirm?: boolean;
+  mtp?: string; // Added MTP for order confirmation
 }
 
 export interface ProfileView {
@@ -213,4 +214,5 @@ export interface PharmacyReply {
   userName: string; // Pharmacy name
   text: string;
   timestamp: Date | FieldValue;
+  reactions?: { [emoji: string]: string[] };
 }

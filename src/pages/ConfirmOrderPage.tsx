@@ -26,9 +26,9 @@ const ConfirmOrderPage: React.FC = () => {
     if (orderDataFromState) {
       setOrderId(orderDataFromState.id);
     } else {
-      // Generate a random 9-digit number
-      const randomNineDigitNumber = Math.floor(100000000 + Math.random() * 900000000);
-      setOrderId(`PGORD-${randomNineDigitNumber}`);
+      // Generate a random 10-digit number for the order ID
+      const randomTenDigits = Math.floor(Math.random() * 10000000000).toString().padStart(10, '0');
+      setOrderId(`PGORD-${randomTenDigits}`);
     }
   }, [orderDataFromState]);
 
@@ -44,7 +44,7 @@ const ConfirmOrderPage: React.FC = () => {
     const templateParams = {
       to_name: currentUser.displayName || currentUser.email,
       order_id: orderDataFromState.id,
-      orders: orderDataFromState.items.map((item: OrderProduct) => ({ // Corrected type to OrderProduct
+      orders: orderDataFromState.items.map((item: OrderProduct) => ({
         image_url: item.image,
         name: item.name,
         units: item.quantity,
@@ -88,7 +88,6 @@ const ConfirmOrderPage: React.FC = () => {
         ...orderDataFromState,
         status: 'Confirmed',
         confirmedAt: serverTimestamp(),
-        // Ensure optional fields are explicitly null if undefined
         uploadedImageLink: orderDataFromState.uploadedImageLink || null,
         doctorName: orderDataFromState.doctorName || null,
         clinicHospitalName: orderDataFromState.clinicHospitalName || null,
@@ -96,7 +95,7 @@ const ConfirmOrderPage: React.FC = () => {
         prescriptionTime: orderDataFromState.prescriptionTime || null,
         manualProductList: orderDataFromState.manualProductList || null,
         notFoundMedicines: orderDataFromState.notFoundMedicines || null,
-        consentToConfirm: orderDataFromState.consentToConfirm || false, // Assuming boolean, default to false
+        consentToConfirm: orderDataFromState.consentToConfirm || false,
       };
 
       console.log('Final order data being saved to Firestore:', finalOrderData);
@@ -164,7 +163,7 @@ const ConfirmOrderPage: React.FC = () => {
           {orderDataFromState.items.length === 0 ? (
             <p className="text-gray-500 text-center">No products in this order. Please go back to checkout.</p>
           ) : (
-            orderDataFromState.items.map((item: OrderProduct) => ( // Corrected type to OrderProduct
+            orderDataFromState.items.map((item: OrderProduct) => (
               <div key={item.id} className="flex items-center bg-gray-50 p-4 rounded-lg shadow-sm">
                 <img src={item.image} alt={item.name} className="w-20 h-20 object-cover rounded-md mr-4" />
                 <div className="flex-grow">
@@ -180,15 +179,11 @@ const ConfirmOrderPage: React.FC = () => {
         <div className="border-t border-gray-200 pt-4 mt-4">
           <div className="flex justify-between text-gray-700 text-lg mb-2">
             <span>Subtotal:</span>
-            <span>{(orderDataFromState.totalPrice - orderDataFromState.deliveryFee - orderDataFromState.tax).toFixed(2)} EGP</span>
+            <span>{(orderDataFromState.totalPrice - orderDataFromState.deliveryFee).toFixed(2)} EGP</span>
           </div>
           <div className="flex justify-between text-gray-700 text-lg mb-2">
             <span>Shipping:</span>
             <span>{orderDataFromState.deliveryFee.toFixed(2)} EGP</span>
-          </div>
-          <div className="flex justify-between text-gray-700 text-lg mb-4">
-            <span>Taxes:</span>
-            <span>{orderDataFromState.tax.toFixed(2)} EGP</span>
           </div>
           <div className="flex justify-between text-gray-800 text-xl font-bold border-t-2 border-green-600 pt-4">
             <span>Order Total:</span>

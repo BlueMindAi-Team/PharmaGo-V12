@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { User, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, addDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, deleteField } from 'firebase/firestore';
 import { useFirebase } from './FirebaseContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -72,25 +72,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (currentUser) {
         // Fetch user data from Firestore
         const userDocRef = doc(db, 'users', currentUser.uid);
-        console.log('Attempting to fetch user document:', userDocRef.path);
         const userDocSnap = await getDoc(userDocRef);
 
         if (userDocSnap.exists()) {
-          setUserData({ uid: currentUser.uid, ...userDocSnap.data() } as UserData);
+          const fetchedUserData = { uid: currentUser.uid, ...userDocSnap.data() } as UserData;
+          setUserData(fetchedUserData);
           // Ensure photoDataUrl is updated from Google photoURL if available and different
-          if (currentUser.photoURL && userDocSnap.data().photoDataUrl !== currentUser.photoURL) {
+          if (currentUser.photoURL && fetchedUserData.photoDataUrl !== currentUser.photoURL) {
             await updateDoc(userDocRef, { photoDataUrl: currentUser.photoURL });
             setUserData(prevData => ({ ...prevData!, photoDataUrl: currentUser.photoURL! }));
           }
         } else {
           // If user exists in Auth but not Firestore, create a basic entry
-          // This might happen if they signed in via Google but the Firestore doc wasn't created yet
           const initialUserData: UserData = {
             uid: currentUser.uid,
             email: currentUser.email || '',
             username: currentUser.email?.split('@')[0] || '',
-            fullName: currentUser.displayName || pendingFullName.current || '', // Use displayName from Google or pendingFullName
-            photoDataUrl: currentUser.photoURL || undefined, // Set photoDataUrl from Google photoURL
+            fullName: currentUser.displayName || pendingFullName.current || '',
+            photoDataUrl: currentUser.photoURL || undefined,
           };
           await setDoc(userDocRef, initialUserData);
           setUserData(initialUserData);
@@ -102,7 +101,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [auth, db]); // Added auth and db to dependency array
 
   // Effect to handle redirection based on user and userData state
   useEffect(() => {
@@ -113,21 +112,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (user && userData) {
       const currentPath = location.pathname;
 
-      // Prioritize staying on dashboard if profile is complete and already there
-      if (userData.role === 'Pharmacy' && userData.isPharmacyVerified && userData.isPharmacyInfoComplete && currentPath.startsWith('/dashboard/pharmacy')) {
+      // If user is already on their correct dashboard, do nothing.
+      if (userData.role === 'Pharmacy' && currentPath.startsWith('/dashboard/pharmacy')) {
         return;
       }
-      if (userData.role === 'Delivery' && userData.isDeliveryInfoComplete && currentPath.startsWith('/dashboard/delivery')) {
+      if (userData.role === 'Delivery' && currentPath.startsWith('/dashboard/delivery')) {
         return;
       }
 
-      // Onboarding steps (prioritized if not on a dashboard)
+      // Onboarding Step 1: Phone Number
       if (!userData.phoneNumber && currentPath !== '/number') {
         toast.info('Please complete your profile by adding a phone number.');
         navigate('/number');
         return;
       }
 
+      // Onboarding Step 2: Role Selection
       if (userData.phoneNumber && !userData.role && currentPath !== '/role') {
         toast.info('Please select a role to continue.');
         navigate('/role');
@@ -136,18 +136,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Role-specific onboarding/verification
       if (userData.role === 'Pharmacy') {
+        // CHANGE 1: SIMPLIFIED AND CORRECTED PHARMACY ONBOARDING LOGIC
         if (!userData.isPharmacyVerified) {
-          if (currentPath !== '/verify-pharmacy' && currentPath !== '/account') {
-            if (userData.pharmacyInfo?.pharmacyId) {
-
-              navigate('dashboard/pharmacy');
-            } else {
-              toast.info('Please verify your pharmacy account to continue.');
-              navigate('/verify-pharmacy');
-            }
+          // If not verified, they MUST go to the verification page.
+          // We only prevent redirection if they are already there.
+          if (currentPath !== '/verify-pharmacy') {
+            toast.info('Please verify your pharmacy account to continue.');
+            navigate('/verify-pharmacy');
             return;
           }
         } else if (!userData.isPharmacyInfoComplete) {
+          // If verified but info is incomplete, they MUST go to the info page.
           if (currentPath !== '/info-pharmacy') {
             toast.info('Please complete your pharmacy profile.');
             navigate('/info-pharmacy');
@@ -160,30 +159,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           navigate('/info-delivery');
           return;
         }
-        // Removed specific redirect for /delivery-orders as it will be handled by DeliveryLoginPage itself
       }
 
-      // General redirect for complete users on login/onboarding pages
+      // Final check: If a user's profile is fully complete, redirect them from
+      // onboarding pages to their correct dashboard or account page.
       const isProfileFullyComplete = userData.phoneNumber && userData.role &&
         ((userData.role === 'Pharmacy' && userData.isPharmacyVerified && userData.isPharmacyInfoComplete) ||
-         (userData.role === 'Delivery' && userData.isDeliveryInfoComplete) || // Removed isDeliveryAdminLoggedIn
+         (userData.role === 'Delivery' && userData.isDeliveryInfoComplete) ||
          (userData.role === 'Client'));
 
-      const isOnOnboardingPage = [
-        '/login', '/number', '/role', '/info-pharmacy', '/verify-pharmacy',
-        '/account', '/info-delivery'
+      const isOnboardingPage = [
+        '/login', '/number', '/role', '/info-pharmacy', '/verify-pharmacy', '/info-delivery'
       ].includes(currentPath);
 
-      if (isProfileFullyComplete && isOnOnboardingPage) {
-        navigate('/account');
+      if (isProfileFullyComplete && isOnboardingPage) {
+        // CHANGE 2: REDIRECT TO THE CORRECT DASHBOARD BASED ON ROLE
+        if (userData.role === 'Pharmacy') {
+          navigate('/dashboard/pharmacy');
+        } else if (userData.role === 'Delivery') {
+          navigate('/dashboard/delivery');
+        } else {
+          navigate('/account'); // Default for 'Client' or other roles
+        }
         return;
       }
 
-    } else if (!user &&
-               location.pathname !== '/login' &&
-               location.pathname !== '/' &&
-               location.pathname !== '/terms-of-service' &&
-               location.pathname !== '/privacy-policy') {
+    } else if (!user && // If user is not logged in...
+               // ...and is not on a public page...
+               !['/login', '/', '/terms-of-service', '/privacy-policy'].includes(location.pathname)) {
+      // ...redirect them to the login page.
       navigate('/login');
     }
   }, [user, userData, loading, navigate, location.pathname]);
@@ -231,7 +235,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const provider = new GoogleAuthProvider();
     provider.addScope('profile');
     provider.addScope('email');
-    // Optional: Force account selection
     provider.setCustomParameters({
       prompt: 'select_account'
     });
@@ -239,7 +242,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       pendingFullName.current = fullName; // Store fullName before popup
       const result = await signInWithPopup(auth, provider);
-      // The user object from result.user is the FirebaseAuthUser
       const currentUser = result.user;
 
       if (currentUser) {
@@ -252,55 +254,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             uid: currentUser.uid,
             email: currentUser.email || '',
             username: currentUser.email?.split('@')[0] || '',
-            fullName: currentUser.displayName || pendingFullName.current || '', // Use displayName from Google or pendingFullName
-            photoDataUrl: currentUser.photoURL || undefined, // Set photoDataUrl from Google photoURL
+            fullName: currentUser.displayName || pendingFullName.current || '',
+            photoDataUrl: currentUser.photoURL || undefined,
           };
           await setDoc(userDocRef, initialUserData);
           setUserData(initialUserData);
           toast.success('Account created successfully!');
-          // New users will be redirected to phone number input by the useEffect
+          // New users will be handled by the redirection useEffect
         } else {
           console.log('Existing user, loading and updating data...');
-          const existingUserData = userDocSnap.data() as UserData;
-          // Update fullName and photoDataUrl for existing user if they are different or were not set
-          const updatedFullName = pendingFullName.current || existingUserData.fullName || currentUser.displayName || '';
-          const updatedPhotoDataUrl = currentUser.photoURL || existingUserData.photoDataUrl || undefined;
-
+          const existingUserData = { uid: currentUser.uid, ...userDocSnap.data() } as UserData;
+          
           const updates: Partial<UserData> = {};
-          if (updatedFullName !== existingUserData.fullName) {
-            updates.fullName = updatedFullName;
+          if ((pendingFullName.current && pendingFullName.current !== existingUserData.fullName) ||
+              (currentUser.displayName && currentUser.displayName !== existingUserData.fullName)) {
+            updates.fullName = currentUser.displayName || pendingFullName.current || existingUserData.fullName;
           }
-          if (updatedPhotoDataUrl !== existingUserData.photoDataUrl) {
-            updates.photoDataUrl = updatedPhotoDataUrl;
+          if (currentUser.photoURL && currentUser.photoURL !== existingUserData.photoDataUrl) {
+            updates.photoDataUrl = currentUser.photoURL;
           }
 
           if (Object.keys(updates).length > 0) {
-            await updateDoc(userDocRef, updates); // Update in Firestore
-            setUserData(prevData => ({ ...prevData!, ...updates }));
+            await updateDoc(userDocRef, updates);
+            setUserData({ ...existingUserData, ...updates });
           } else {
-            setUserData(existingUserData); // No updates needed, just set existing data
+            setUserData(existingUserData);
           }
           
           toast.success('Logged in successfully!');
-          
-          // Handle redirects for returning users based on their role and verification status
-          if (existingUserData.role === 'Client') {
-            // Client users go directly to account
-            navigate('/account');
-          } else if (existingUserData.role === 'Pharmacy' && existingUserData.isPharmacyVerified && existingUserData.isPharmacyInfoComplete) {
-            // If pharmacy is already verified and info complete, go to dashboard
-            navigate('/dashboard/pharmacy');
-          } else if (existingUserData.role === 'Delivery' && existingUserData.isDeliveryInfoComplete) {
-            // If delivery is already verified and info complete, go to dashboard
-            navigate('/dashboard/delivery');
-          }
-          // Other cases (no role, no phone, unverified pharmacy/delivery) will be handled by the useEffect
+          // Redirection for existing users is handled by the main useEffect
         }
       }
     } catch (error: any) {
       console.error('Error during Google sign-in:', error);
-      toast.error(`Login failed: ${error.message}`);
-      pendingFullName.current = null; // Clear the ref on error
+      if (error.code !== 'auth/popup-closed-by-user') {
+        toast.error(`Login failed: ${error.message}`);
+      }
+      pendingFullName.current = null;
     }
   };
 
@@ -308,9 +298,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       if (user?.uid) {
         const userDocRef = doc(db, 'users', user.uid);
-        const userDocSnap = await getDoc(userDocRef); // Fetch userDocSnap here
+        const userDocSnap = await getDoc(userDocRef);
 
-        // Only clear MTP on sign out, do not reset verification status
         const updateData: { [key: string]: any } = {};
 
         if (userDocSnap.exists() && userDocSnap.data()?.pharmacyInfo?.mtp) {
@@ -322,19 +311,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (Object.keys(updateData).length > 0) {
           await updateDoc(userDocRef, updateData);
-
-          // Update local state immediately for a smoother UX
-          setUserData(prevData => {
-            if (!prevData) return null;
-            const newPrevData = { ...prevData };
-            if (newPrevData.pharmacyInfo) {
-              delete newPrevData.pharmacyInfo.mtp;
-            }
-            if (newPrevData.deliveryInfo) {
-              delete newPrevData.deliveryInfo.mtp;
-            }
-            return newPrevData;
-          });
         }
       }
       await signOut(auth);
@@ -355,11 +331,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
     try {
       const userDocRef = doc(db, 'users', user.uid);
-      
       await updateDoc(userDocRef, updates);
-
       setUserData(prevData => ({ ...prevData!, ...updates }));
-      
       toast.success('Profile updated successfully!');
     } catch (error: any) {
       console.error('Error updating profile:', error);
@@ -375,31 +348,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const userDocRef = doc(db, 'users', user.uid);
       const updatedData = { role };
-
       await updateDoc(userDocRef, updatedData);
-
       setUserData(prevData => ({ ...prevData!, ...updatedData }));
-      
       toast.success(`Role set to ${role}!`);
-
-      // Redirect based on role
-      if (role === 'Client') {
-        navigate('/account');
-      } else if (role === 'Pharmacy') {
-        navigate('/verify-pharmacy');
-      } else if (role === 'Delivery') {
-        navigate('/info-delivery');
-      }
+      // Redirection is handled by the main useEffect
     } catch (error: any) {
       console.error('Error updating role:', error);
       toast.error(`Failed to update role: ${error.message}`);
     }
   };
 
-  // Check if a pharmacy with the same name and address already exists
   const checkDuplicatePharmacy = async (name: string, address: string) => {
     try {
-      // Query users collection for pharmacies with the same name and address
       const usersRef = collection(db, 'users');
       const q = query(
         usersRef, 
@@ -409,54 +369,45 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       );
       
       const querySnapshot = await getDocs(q);
-      
-      // If any documents match, a duplicate exists
       return !querySnapshot.empty;
     } catch (error: any) {
       console.error('Error checking for duplicate pharmacy:', error);
       toast.error(`Failed to check for duplicate pharmacy: ${error.message}`);
-      return false; // Default to false on error
+      return true; // Default to true (prevent submission) on error
     }
   };
 
-  // Generate pharmacy credentials (ID and MTP) and save to Firestore
   const generatePharmacyCredentials = async () => {
     if (!user || !user.email) {
       toast.error('User not authenticated or missing email.');
       return null;
     }
-
     try {
       const pharmacyId = generatePharmacyId();
-      const mtp = generateMTP(); // Use generateMTP from the utility file
-
-      // Save MTP directly to user's pharmacyInfo
+      const mtp = generateMTP();
       const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, {
         'pharmacyInfo.pharmacyId': pharmacyId,
-        'pharmacyInfo.mtp': mtp, // Save MTP in pharmacyInfo
-        isPharmacyVerified: false // Ensure it's false until verified
+        'pharmacyInfo.mtp': mtp,
+        isPharmacyVerified: false
       });
 
-      // Send MTP via EmailJS
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
-        toast.error('Email service not configured. Please check your .env file and EmailJS setup.');
+        toast.error('Email service not configured.');
         console.error('EmailJS environment variables are missing.');
         return null;
       }
 
       const templateParams = {
         email: user.email,
-        to_name: userData?.fullName || extractUsername(user.email), // Use userData.fullName or extract from email
-        mtp_code: mtp, // Send MTP as mtp_code
-        user_role: userData?.role || 'Pharmacy', // Use userData.role or default to 'Pharmacy'
+        to_name: userData?.fullName || extractUsername(user.email),
+        mtp_code: mtp,
+        user_role: userData?.role || 'Pharmacy',
         pharmacy_id: pharmacyId,
         from_email: 'PharmaGo Team',
       };
-
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
       toast.success(`MTP sent to ${user.email}. Please check your inbox.`);
-
       return { pharmacyId, mtp };
     } catch (error: any) {
       console.error('Error generating pharmacy credentials:', error);
@@ -465,51 +416,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Verify pharmacy with ID and MTP
   const verifyPharmacy = async (pharmacyId: string, mtp: string) => {
     if (!user || !user.uid) {
       toast.error('User not authenticated.');
       return false;
     }
-
     try {
       const userDocRef = doc(db, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
-
       if (!userDocSnap.exists()) {
         toast.error('User data not found.');
         return false;
       }
-
       const currentUserData = userDocSnap.data() as UserData;
-      const storedPharmacyId = currentUserData.pharmacyInfo?.pharmacyId;
-      const storedMtp = currentUserData.pharmacyInfo?.mtp;
-
-      // Check if the provided pharmacyId matches the stored one
-      if (storedPharmacyId !== pharmacyId) {
-        toast.error('Invalid Pharmacy ID. Please try again.');
+      if (currentUserData.pharmacyInfo?.pharmacyId !== pharmacyId || currentUserData.pharmacyInfo?.mtp !== mtp) {
+        toast.error('Invalid Pharmacy ID or MTP. Please try again.');
         return false;
       }
-
-      // Check if the provided MTP matches the stored one
-      if (storedMtp !== mtp) {
-        toast.error('Invalid MTP. Please try again.');
-        return false;
-      }
-
-      // If both match, mark as verified and clear the MTP for security
       await updateDoc(userDocRef, {
         isPharmacyVerified: true,
-        'pharmacyInfo.mtp': null // Clear MTP after successful verification
+        'pharmacyInfo.mtp': deleteField() // Use deleteField for security
       });
-
-      // Update local state
       setUserData(prevData => prevData ? { 
         ...prevData, 
         isPharmacyVerified: true,
         pharmacyInfo: prevData.pharmacyInfo ? { ...prevData.pharmacyInfo, mtp: undefined } : undefined
       } : null);
-
       toast.success('Pharmacy verified successfully!');
       return true;
     } catch (error: any) {
@@ -519,44 +451,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Generate delivery credentials (ID and MTP) and save to Firestore
   const generateDeliveryCredentials = async () => {
     if (!user || !user.email) {
       toast.error('User not authenticated or missing email.');
       return null;
     }
-
     try {
       const deliverymanId = generatedeliverymanId();
-      const mtp = generateMTP(); // Use generateMTP for MTP
-
-      // Save MTP directly to user's deliveryInfo
+      const mtp = generateMTP();
       const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, {
         'deliveryInfo.companyId': deliverymanId,
-        'deliveryInfo.mtp': mtp, // Save MTP in deliveryInfo
-        isDeliveryInfoComplete: false // Ensure it's false until verified
+        'deliveryInfo.mtp': mtp,
+        isDeliveryInfoComplete: false
       });
 
-      // Send MTP via EmailJS
       if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
-        toast.error('Email service not configured. Please check your .env file and EmailJS setup.');
+        toast.error('Email service not configured.');
         console.error('EmailJS environment variables are missing.');
         return null;
       }
 
       const templateParams = {
         email: user.email,
-        to_name: userData?.fullName || extractUsername(user.email), // Use userData.fullName or extract from email
-        mtp_code: mtp, // Send MTP as mtp_code
-        user_role: userData?.role || 'Delivery', // Use userData.role or default to 'Delivery'
+        to_name: userData?.fullName || extractUsername(user.email),
+        mtp_code: mtp,
+        user_role: userData?.role || 'Delivery',
         delivery_company_id: deliverymanId,
         from_email: 'The MedGo Team',
       };
-
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
       toast.success(`MTP sent to ${user.email}. Please check your inbox.`);
-
       return { deliverymanId, mtp };
     } catch (error: any) {
       console.error('Error generating delivery credentials:', error);
@@ -565,51 +490,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Verify delivery with ID and MTP
   const verifyDelivery = async (deliverymanId: string, mtp: string) => {
     if (!user || !user.uid) {
       toast.error('User not authenticated.');
       return false;
     }
-
     try {
       const userDocRef = doc(db, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
-
       if (!userDocSnap.exists()) {
         toast.error('User data not found.');
         return false;
       }
-
       const currentUserData = userDocSnap.data() as UserData;
-      const storeddeliverymanId = currentUserData.deliveryInfo?.companyId;
-      const storedMtp = currentUserData.deliveryInfo?.mtp;
-
-      // Check if the provided deliverymanId matches the stored one
-      if (storeddeliverymanId !== deliverymanId) {
-        toast.error('Invalid Delivery Company ID. Please try again.');
+      if (currentUserData.deliveryInfo?.companyId !== deliverymanId || currentUserData.deliveryInfo?.mtp !== mtp) {
+        toast.error('Invalid Delivery Company ID or MTP. Please try again.');
         return false;
       }
-
-      // Check if the provided MTP matches the stored one
-      if (storedMtp !== mtp) {
-        toast.error('Invalid MTP. Please try again.');
-        return false;
-      }
-
-      // If both match, mark as verified and clear the MTP for security
       await updateDoc(userDocRef, {
         isDeliveryInfoComplete: true,
-        'deliveryInfo.mtp': null // Clear MTP after successful verification
+        'deliveryInfo.mtp': deleteField()
       });
-
-      // Update local state
       setUserData(prevData => prevData ? { 
         ...prevData, 
         isDeliveryInfoComplete: true,
         deliveryInfo: prevData.deliveryInfo ? { ...prevData.deliveryInfo, mtp: undefined } : undefined
       } : null);
-
       toast.success('Delivery verified successfully!');
       return true;
     } catch (error: any) {
@@ -632,8 +538,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       verifyPharmacy,
       generatePharmacyCredentials,
       checkDuplicatePharmacy,
-      generateDeliveryCredentials, // Added for delivery
-      verifyDelivery // Added for delivery
+      generateDeliveryCredentials,
+      verifyDelivery
     }}>
       {children}
     </AuthContext.Provider>

@@ -65,7 +65,12 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         const existingQuantity = docSnap.data().quantity;
         await updateDoc(cartItemRef, { quantity: existingQuantity + quantity });
       } else {
-        await setDoc(cartItemRef, { product, quantity });
+        // Ensure expiryDate is a valid Date object or undefined before saving
+        const productToSave = { ...product };
+        if (productToSave.expiryDate === null || (productToSave.expiryDate instanceof Date && isNaN(productToSave.expiryDate.getTime()))) {
+          delete productToSave.expiryDate; // Remove the field if it's null or an invalid Date
+        }
+        await setDoc(cartItemRef, { product: productToSave, quantity });
       }
       toast.success('Added to cart successfully!', { position: 'bottom-left' });
     } catch (error) {

@@ -1,19 +1,20 @@
 import React, { useState, useEffect, MouseEvent, FormEvent, useRef, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom'; // Import Link if needed later, keep for now
-import { Product, Comment } from '../types'; // Keep Product and Comment types
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Product, Comment } from '../types';
 import {
-  FaStar as Star, // Use FaStar from react-icons/fa for consistency
+  FaStar as Star,
   FaShoppingCart as ShoppingCart,
-  FaTrashAlt as Trash2, // Use FaTrashAlt
-  FaCreditCard as CreditCard // Use FaCreditCard
-} from 'react-icons/fa'; // Import icons from react-icons/fa
+  FaTrashAlt as Trash2,
+  FaCreditCard as CreditCard,
+  FaShieldAlt // FIXED: Added missing icon import
+} from 'react-icons/fa';
 import { useCart } from '../contexts/CartContext';
-import { useAuth } from '../contexts/AuthContext'; // Import useAuth
-import { db } from '../firebaseConfig'; // Import db
-import { collection, query, where, orderBy, addDoc, getDocs, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore'; // Firestore imports, add getDoc, updateDoc
-import { toast } from 'react-toastify'; // Import toast
-import ConfirmationDialog from '../components/ConfirmationDialog'; // Import ConfirmationDialog
-import { Helmet } from 'react-helmet-async'; // Import Helmet
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../firebaseConfig';
+import { collection, query, where, orderBy, addDoc, getDocs, deleteDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
+import ConfirmationDialog from '../components/ConfirmationDialog';
+import { Helmet } from 'react-helmet-async';
 
 interface Params {
   productId: string;
@@ -28,7 +29,7 @@ const ProductDetailPage: React.FC = () => {
   const [commentToDelete, setCommentToDelete] = useState<{ id: string; userId: string } | null>(null);
 
   // State for new comment form
-  const { user, userData, loading: authLoading } = useAuth(); // Get user and userData from AuthContext
+  const { user, userData, loading: authLoading } = useAuth();
   const [newCommentText, setNewCommentText] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [newRating, setNewRating] = useState(0);
@@ -40,14 +41,12 @@ const ProductDetailPage: React.FC = () => {
     }
   }, [userData]);
 
-  // MODIFIED: Refs for the new zoom logic
   const imageRef = useRef<HTMLImageElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null); // Ref for the container div
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { addToCart } = useCart();
   const navigate = useNavigate();
 
-  // Function to fetch comments from Firestore
   const fetchComments = useCallback(async () => {
     if (!productId) return;
     try {
@@ -65,7 +64,7 @@ const ProductDetailPage: React.FC = () => {
           ...data,
           timestamp: data.timestamp && typeof data.timestamp.toDate === 'function'
             ? data.timestamp.toDate()
-            : data.timestamp || new Date(), // Safely convert Timestamp to Date, or use as is, or new Date() if missing
+            : data.timestamp || new Date(),
         } as Comment;
       });
       setComments(fetchedComments);
@@ -87,13 +86,13 @@ const ProductDetailPage: React.FC = () => {
           setProduct({
             id: productDocSnap.id,
             ...productData,
+            pharmacyVerified: productData.pharmacyVerified || false,
             expiryDate: productData.expiryDate && typeof productData.expiryDate.toDate === 'function'
               ? productData.expiryDate.toDate()
-              : productData.expiryDate || null, // Safely convert Timestamp to Date, or use as is, or null
-          } as Product);
+              : productData.expiryDate || null,
+          } as unknown as Product); // FIXED: Used 'as unknown as Product' to resolve the TS error
         } else {
-          // Product not found
-          setProduct(undefined); // Or set a state to indicate not found
+          setProduct(undefined);
           toast.error('Product not found.');
         }
       } catch (error) {
@@ -103,46 +102,34 @@ const ProductDetailPage: React.FC = () => {
     };
 
     fetchProduct();
-    fetchComments(); // Fetch comments on component mount or productId change
-  }, [productId, fetchComments]); // Add fetchComments as a dependency
+    fetchComments();
+  }, [productId, fetchComments]);
 
-  // --- NEW AND IMPROVED ZOOM LOGIC ---
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!imageRef.current || !containerRef.current) return;
 
     const containerRect = containerRef.current.getBoundingClientRect();
     const image = imageRef.current;
-
-    // Calculate mouse position relative to the container
     const x = e.clientX - containerRect.left;
     const y = e.clientY - containerRect.top;
-
-    // Calculate mouse position as a percentage of the container's dimensions
     const xPercent = x / containerRect.width;
-    const yPercent = y / containerRef.current.clientHeight; // Use container height
+    const yPercent = y / containerRef.current.clientHeight;
+    const scale = 4;
 
-    const scale = 4; // Set zoom factor, increased for larger zoom
-
-    // Apply the transformation directly for performance
-    // This pans the image to keep the cursor's target in view
-    image.style.transition = 'transform 0.1s ease-out'; // Fast transition for smooth panning
+    image.style.transition = 'transform 0.1s ease-out';
     image.style.transform = `translate(-${xPercent * (image.offsetWidth * scale - containerRef.current.clientWidth)}px, -${yPercent * (image.offsetHeight * scale - containerRef.current.clientHeight)}px) scale(${scale})`;
   };
 
-
   const handleMouseEnter = () => {
     if (!imageRef.current) return;
-    // Set a delay for the initial zoom-in effect
     imageRef.current.style.transition = 'transform 0.3s 0.3s ease-in-out';
   };
 
   const handleMouseLeave = () => {
     if (!imageRef.current) return;
-    // Reset the image to its original state with no delay
     imageRef.current.style.transition = 'transform 0.3s ease-in-out';
     imageRef.current.style.transform = 'translate(0, 0) scale(1)';
   };
-  // --- END OF ZOOM LOGIC ---
 
   const handleSubmitComment = async (e: FormEvent) => {
     e.preventDefault();
@@ -158,7 +145,7 @@ const ProductDetailPage: React.FC = () => {
 
     if (product) {
       try {
-        const newComment: Omit<Comment, 'id'> = { // Omit 'id' as Firestore generates it
+        const newComment: Omit<Comment, 'id'> = {
           productId: product.id,
           productName: product.name,
           productPrice: product.price,
@@ -177,8 +164,8 @@ const ProductDetailPage: React.FC = () => {
         setNewCommentText('');
         setNewRating(0);
         setHoverRating(0);
-        await fetchComments(); // Re-fetch comments to update the list
-        // After fetching comments, update the product's rating and reviewCount
+        await fetchComments();
+
         if (product) {
           const updatedComments = await getDocs(query(collection(db, 'comments'), where('productId', '==', product.id)));
           const totalRating = updatedComments.docs.reduce((sum, doc) => sum + doc.data().rating, 0);
@@ -193,6 +180,9 @@ const ProductDetailPage: React.FC = () => {
           setProduct(prevProduct => prevProduct ? { ...prevProduct, rating: newAverageRating, reviewCount: newReviewCount } : undefined);
         }
       } catch (error) {
+        // FIXED: Added error handling to the previously empty catch block
+        console.error("Error submitting comment:", error);
+        toast.error("Failed to submit your review. Please try again.");
       }
     }
   };
@@ -211,8 +201,8 @@ const ProductDetailPage: React.FC = () => {
       try {
         await deleteDoc(doc(db, 'comments', commentToDelete.id));
         toast.success('Comment deleted successfully!');
-        await fetchComments(); // Re-fetch comments to update the list
-        // After fetching comments, update the product's rating and reviewCount
+        await fetchComments();
+
         if (product) {
           const updatedComments = await getDocs(query(collection(db, 'comments'), where('productId', '==', product.id)));
           const totalRating = updatedComments.docs.reduce((sum, doc) => sum + doc.data().rating, 0);
@@ -227,6 +217,9 @@ const ProductDetailPage: React.FC = () => {
           setProduct(prevProduct => prevProduct ? { ...prevProduct, rating: newAverageRating, reviewCount: newReviewCount } : undefined);
         }
       } catch (error) {
+        // FIXED: Added error handling to the previously empty catch block
+        console.error("Error deleting comment:", error);
+        toast.error("Could not delete the comment. Please try again.");
       } finally {
         setShowDeleteConfirm(false);
         setCommentToDelete(null);
@@ -239,7 +232,6 @@ const ProductDetailPage: React.FC = () => {
     setCommentToDelete(null);
   };
 
-
   const handleAddToCart = (e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -250,17 +242,14 @@ const ProductDetailPage: React.FC = () => {
 
   const handleBuyNow = () => {
     if (product) {
-      // Do NOT add to cart, navigate directly with product state
       navigate('/checkout', { state: { productToBuy: product } });
     }
   };
 
-  const averageRating = comments.length > 0
-    ? comments.reduce((acc, comment) => acc + comment.rating, 0) / comments.length
-    : 0;
-  const totalReviews = comments.length;
+  const averageRating = product?.rating ?? 0;
+  const totalReviews = product?.reviewCount ?? 0;
 
-  if (!product || authLoading) { // Show loading if auth is still loading
+  if (authLoading || !product) {
     return <div className="pt-[80px] text-center">Loading product or user data...</div>;
   }
 
@@ -282,7 +271,6 @@ const ProductDetailPage: React.FC = () => {
       <div className="container mx-auto px-4 py-8 pt-[80px]">
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="w-full lg:w-1/3">
-            {/* MODIFIED: Zoom container with new event handlers */}
             <div
               ref={containerRef}
               className="relative overflow-hidden rounded-lg shadow-md cursor-zoom-in border w-full aspect-square"
@@ -294,7 +282,7 @@ const ProductDetailPage: React.FC = () => {
                 ref={imageRef}
                 src={product.image}
                 alt={product.name}
-                className="w-full h-full object-cover" // Make image fill the square container
+                className="w-full h-full object-cover"
               />
             </div>
           </div>
@@ -352,19 +340,24 @@ const ProductDetailPage: React.FC = () => {
                     ))}
                   </div>
                 )}
-                {/* Display Pharmacy Name */}
                 {product.pharmacyName && (
-                  <p><span className="font-semibold">Pharmacy:</span> {product.pharmacyName}</p>
+                  <p className="flex items-center">
+                    <span className="font-semibold">Pharmacy:</span>
+                    <span className="ml-1">{product.pharmacyName}</span>
+                    {(product as Product & { pharmacyVerified?: boolean }).pharmacyVerified && (
+                      <span className="ml-2 flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                        <FaShieldAlt className="w-4 h-4 mr-1" />
+                        Verified
+                      </span>
+                    )}
+                  </p>
                 )}
-                {/* Display Product Amount */}
                 {product.productAmount !== undefined && (
                   <p><span className="font-semibold">Amount:</span> {product.productAmount}</p>
                 )}
-                {/* Display Delivery Time */}
                 {product.deliveryTime && (
                   <p><span className="font-semibold">Delivery Time:</span> {product.deliveryTime}</p>
                 )}
-                {/* Display Expiry Date */}
                 {product.expiryDate && (
                   <p><span className="font-semibold">Expiry Date:</span> {product.expiryDate instanceof Date ? product.expiryDate.toLocaleDateString() : product.expiryDate}</p>
                 )}
@@ -399,7 +392,6 @@ const ProductDetailPage: React.FC = () => {
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Reviews & Comments</h2>
 
-          {/* Confirmation Dialog */}
           <ConfirmationDialog
             isOpen={showDeleteConfirm}
             title="Delete Comment"
@@ -420,7 +412,7 @@ const ProductDetailPage: React.FC = () => {
                   placeholder="e.g. Ahmed Helmy"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
-                  disabled={!!userData?.username} // Disable if username is already set
+                  disabled={!!userData?.username}
                 />
               </div>
               <div className="mb-4">
@@ -454,7 +446,7 @@ const ProductDetailPage: React.FC = () => {
               <button
                 type="submit"
                 className="bg-dark-blue hover:bg-medium-blue text-white font-bold py-2 px-6 rounded-lg focus:outline-none focus:shadow-outline transition-colors duration-300"
-                disabled={!user} // Disable submit if not logged in
+                disabled={!user}
               >
                 Submit Review
               </button>
@@ -464,10 +456,10 @@ const ProductDetailPage: React.FC = () => {
             )}
           </div>
 
-          <div className="max-h-96 overflow-y-auto pr-4"> {/* Added max-height and overflow for scrolling */}
+          <div className="max-h-96 overflow-y-auto pr-4">
             {comments.length > 0 ? (
               comments
-                .map((comment) => ( // Removed sort as Firestore query handles order
+                .map((comment) => (
                   <div key={comment.id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mb-4">
                     <div className="flex justify-between items-start">
                       <div className="flex items-center space-x-4">
@@ -491,7 +483,7 @@ const ProductDetailPage: React.FC = () => {
                         <p className="text-xs text-gray-500 mb-2">
                           {comment.timestamp.toLocaleDateString()}
                         </p>
-                        {user && user.uid === comment.userId && ( // Only show delete if current user owns comment
+                        {user && user.uid === comment.userId && (
                           <button
                             onClick={() => handleDeleteComment(comment.id, comment.userId)}
                             className="flex items-center space-x-1 text-xs text-red-500 hover:text-red-700 font-semibold"

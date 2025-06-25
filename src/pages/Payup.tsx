@@ -22,7 +22,7 @@ import {
 const Payup: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Import useLocation
-  const { productToBuy, products: obpProducts, totalPrice: obpTotalPrice, deliveryFee: obpDeliveryFee, tax: obpTax, orderData: obpOrderData } = location.state || {};
+  const { productToBuy, products: obpProducts, totalPrice: obpTotalPrice, deliveryFee: obpDeliveryFee, orderData: obpOrderData } = location.state || {};
 
   // Destructure clearCart from useCart
   const { items, getTotalPrice, clearCart } = useCart();
@@ -31,10 +31,7 @@ const Payup: React.FC = () => {
 
   const [name, setName] = useState(userData?.fullName || '');
   const [phone, setPhone] = useState(userData?.phoneNumber || '');
-  const [address, setAddress] = useState(obpOrderData?.userAddress || ''); // Pre-fill address if coming from OBP
-  const [vodafoneCashNumber, setVodafoneCashNumber] = useState('');
-  const [transactionId, setTransactionId] = useState('');
-  const [isCopied, setIsCopied] = useState(false);
+  const [address, setAddress] = useState(obpOrderData?.userAddress || '');
   const [recipientVodafoneCashNumber, setRecipientVodafoneCashNumber] = useState(import.meta.env.VITE_VODAFONE_CASH_NUMBER || ''); // Default to .env or fallback
   const [paymentMethod, setPaymentMethod] = useState<'vodafoneCash' | 'cashOnDelivery'>('cashOnDelivery'); // New state for payment method
 
@@ -53,8 +50,8 @@ const Payup: React.FC = () => {
 
       if (productToBuy && productToBuy.pharmacyName) {
         targetPharmacyName = productToBuy.pharmacyName;
-      } else if (obpOrderData && obpOrderData.pharmacyName) {
-        targetPharmacyName = obpOrderData.pharmacyName;
+      } else if (obpProducts && obpProducts.length > 0 && obpOrderData?.pharmacyName) {
+          targetPharmacyName = obpOrderData.pharmacyName
       }
 
       if (targetPharmacyName) {
@@ -89,15 +86,9 @@ const Payup: React.FC = () => {
     };
 
     fetchPharmacyVodafoneCash();
-  }, [productToBuy, obpOrderData]);
-
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(recipientVodafoneCashNumber);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
-  };
+  }, [productToBuy, obpProducts, obpOrderData]);
   
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -179,27 +170,26 @@ const Payup: React.FC = () => {
       fullName: userData.fullName || userData.displayName || 'N/A',
       userNumber: phone,
       userAddress: address,
-      userAddressMapLink: obpOrderData?.userAddressMapLink || null, // Use OBP map link if available
+      userAddressMapLink: obpOrderData?.userAddressMapLink || null,
       items: orderItems,
       orderType: orderType,
       pharmacyId: pharmacyId,
       pharmacyName: targetPharmacyName,
       totalPrice: calculateTotalWithExtras(),
       deliveryFee: SHIPPING_COST,
-      tax: TAX_AMOUNT,
+      tax: 0,
       status: 'Pending', // Initial status
       orderDate: new Date().toISOString(),
       orderTimestamp: serverTimestamp(),
       paymentMethod: paymentMethod,
-      // Include OBP specific data if available
-      uploadedImageLink: obpOrderData?.uploadedImageLink,
-      doctorName: obpOrderData?.doctorName,
-      clinicHospitalName: obpOrderData?.clinicHospitalName,
-      prescriptionDate: obpOrderData?.prescriptionDate,
-      prescriptionTime: obpOrderData?.prescriptionTime,
-      manualProductList: obpOrderData?.manualProductList,
-      notFoundMedicines: obpOrderData?.notFoundMedicines,
-      consentToConfirm: obpOrderData?.consentToConfirm,
+      uploadedImageLink: obpOrderData?.uploadedImageLink || null,
+      doctorName: obpOrderData?.doctorName || null,
+      clinicHospitalName: obpOrderData?.clinicHospitalName || null,
+      prescriptionDate: obpOrderData?.prescriptionDate || null,
+      prescriptionTime: obpOrderData?.prescriptionTime || null,
+      manualProductList: obpOrderData?.manualProductList || null,
+      notFoundMedicines: obpOrderData?.notFoundMedicines || null,
+      consentToConfirm: obpOrderData?.consentToConfirm || false,
     };
 
     try {
@@ -212,17 +202,14 @@ const Payup: React.FC = () => {
     }
   };
 
-  // **FIXED**: Simplified the form invalidation check. The required attribute on inputs handles individual fields.
-  // The primary check is to ensure the cart is not empty.
   const SHIPPING_COST = obpDeliveryFee !== undefined ? obpDeliveryFee : 10.00; // Use OBP delivery fee or default
-  const TAX_AMOUNT = obpTax !== undefined ? obpTax : 5.00;    // Use OBP tax or default
 
   const calculateTotalWithExtras = () => {
     if (obpTotalPrice !== undefined) {
       return obpTotalPrice; // Use total from OBP if available
     }
     const subtotal = productToBuy ? productToBuy.price : getTotalPrice();
-    return subtotal + SHIPPING_COST + TAX_AMOUNT;
+    return subtotal + SHIPPING_COST;
   };
 
   // Form is invalid if no product, no OBP products, and cart is empty
@@ -269,10 +256,6 @@ const Payup: React.FC = () => {
                     <span>Shipping</span>
                     <span>{SHIPPING_COST.toFixed(2)} EGP</span>
                   </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Tax</span>
-                    <span>{TAX_AMOUNT.toFixed(2)} EGP</span>
-                  </div>
                   <div className="flex justify-between items-center pt-4 text-xl font-bold text-gray-900">
                     <span>Total</span>
                     <span>{calculateTotalWithExtras().toFixed(2)} EGP</span>
@@ -302,15 +285,11 @@ const Payup: React.FC = () => {
                 <div className="mt-6 pt-6 border-t border-gray-200 space-y-2">
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal</span>
-                    <span>{(obpTotalPrice - obpDeliveryFee - obpTax).toFixed(2)} EGP</span>
+                    <span>{(obpTotalPrice - obpDeliveryFee).toFixed(2)} EGP</span>
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
                     <span>{SHIPPING_COST.toFixed(2)} EGP</span>
-                  </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Tax</span>
-                    <span>{TAX_AMOUNT.toFixed(2)} EGP</span>
                   </div>
                   <div className="flex justify-between items-center pt-4 text-xl font-bold text-gray-900">
                     <span>Total</span>
@@ -352,10 +331,6 @@ const Payup: React.FC = () => {
                   <div className="flex justify-between text-gray-600">
                     <span>Shipping</span>
                     <span>{SHIPPING_COST.toFixed(2)} EGP</span>
-                  </div>
-                  <div className="flex justify-between text-gray-600">
-                    <span>Tax</span>
-                    <span>{TAX_AMOUNT.toFixed(2)} EGP</span>
                   </div>
                   <div className="flex justify-between items-center pt-4 text-xl font-bold text-gray-900">
                     <span>Total</span>

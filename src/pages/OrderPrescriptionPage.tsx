@@ -107,8 +107,7 @@ const OrderPrescriptionPage: React.FC = () => {
 
     const productsTotalPrice = matchingProducts.reduce((sum, product) => sum + product.price, 0);
     const deliveryFee = 10;
-    const tax = 5;
-    const totalPrice = productsTotalPrice + deliveryFee + tax;
+    const totalPrice = productsTotalPrice + deliveryFee;
 
     // Determine pharmacyId and pharmacyName from the first matching product, if any
     let pharmacyId: string | undefined;
@@ -152,7 +151,7 @@ const OrderPrescriptionPage: React.FC = () => {
       pharmacyName: pharmacyName,
       totalPrice: totalPrice,
       deliveryFee: deliveryFee,
-      tax: tax,
+      tax: 0,
       status: 'Pending', // Initial status
       orderDate: new Date().toISOString(),
       orderTimestamp: serverTimestamp(),
@@ -179,7 +178,6 @@ const OrderPrescriptionPage: React.FC = () => {
           products: orderItems, // Pass orderItems instead of matchingProducts
           totalPrice: totalPrice,
           deliveryFee: deliveryFee,
-          tax: tax,
           orderData: orderData // Pass the full order data for display on Payup page
         }
       });

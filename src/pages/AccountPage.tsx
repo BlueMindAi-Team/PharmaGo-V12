@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -141,10 +141,14 @@ export const AccountPage: React.FC = () => {
     }
   };
 
-  const handleVerificationSuccess = () => {
-    // Refresh the page or update local state to show verification badge
+  const handleVerificationSuccess = useCallback(() => {
+    // This callback is triggered when the modal successfully verifies the pharmacy.
+    // We need to ensure the local userData state is updated to reflect the verification.
+    // The useAuth hook's updateUserProfile already handles this, but a re-fetch or
+    // explicit state update might be needed depending on how AuthContext is structured.
+    // For now, a simple reload will ensure the badge appears.
     window.location.reload();
-  };
+  }, []);
 
   // --- Loading and Fallback States ---
   if (loading) {
@@ -238,14 +242,6 @@ export const AccountPage: React.FC = () => {
                     <button onClick={handleDashboardClick} className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center justify-center">
                       <FaChartBar className="mr-2" /> Dashboard
                     </button>
-                    {!userData.pharmacyInfo?.verified && (
-                      <button 
-                        onClick={() => setShowVerificationModal(true)}
-                        className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition flex items-center justify-center"
-                      >
-                        <FaShieldAlt className="mr-2" /> Verify Pharmacy
-                      </button>
-                    )}
                   </>
                 )}
                 {userData?.role === 'Delivery' && (
@@ -377,6 +373,21 @@ export const AccountPage: React.FC = () => {
         onClose={() => setShowVerificationModal(false)}
         onVerificationSuccess={handleVerificationSuccess}
       />
+      {/* Pharmacy Verification Section */}
+      {userData?.role === 'Pharmacy' && !userData?.pharmacyInfo?.verified && (
+        <div className="bg-white p-6 rounded-lg shadow-md mt-6">
+          <h4 className="text-lg font-semibold mb-4 text-gray-800">Pharmacy Verification</h4>
+          <p className="text-gray-700 mb-4">
+            Your pharmacy account is not yet verified. Verify it to unlock full features and build trust with customers.
+          </p>
+          <button
+            onClick={() => setShowVerificationModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center justify-center"
+          >
+            <FaShieldAlt className="mr-2" /> Verify Pharmacy
+          </button>
+        </div>
+      )}
     </div>
   );
 };

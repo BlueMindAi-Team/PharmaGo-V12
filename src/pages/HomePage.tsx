@@ -63,7 +63,7 @@ const HomePage: React.FC = () => {
               <div className="card card-hover overflow-hidden">
                 <div className="relative h-40 overflow-hidden">
                   <img
-                    src="https://via.placeholder.com/150"
+                    src="https://i.ibb.co/b5Hv44D9/pharmalogo.png"
                     alt="Pharmacy 1 Logo"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
@@ -76,10 +76,10 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
                   <h3 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-dark-blue transition-colors">
-                    Pharmacy One
+                    Emara Pharmacy
                   </h3>
                   <p className="text-gray-500 text-sm flex items-center justify-center space-x-2">
-                    <span>Top Rated</span>
+
                   </p>
                 </div>
               </div>
@@ -89,7 +89,7 @@ const HomePage: React.FC = () => {
               <div className="card card-hover overflow-hidden">
                 <div className="relative h-40 overflow-hidden">
                   <img
-                    src="https://via.placeholder.com/150"
+                    src="https://i.ibb.co/b5Hv44D9/pharmalogo.png"
                     alt="Pharmacy 2 Logo"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
@@ -102,10 +102,10 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
                   <h3 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-dark-blue transition-colors">
-                    Pharmacy Two
+                    Seif Pharmacy
                   </h3>
                   <p className="text-gray-500 text-sm flex items-center justify-center space-x-2">
-                    <span>Top Rated</span>
+
                   </p>
                 </div>
               </div>
@@ -115,7 +115,7 @@ const HomePage: React.FC = () => {
               <div className="card card-hover overflow-hidden">
                 <div className="relative h-40 overflow-hidden">
                   <img
-                    src="https://via.placeholder.com/150"
+                    src="https://i.ibb.co/b5Hv44D9/pharmalogo.png"
                     alt="Pharmacy 3 Logo"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
@@ -127,11 +127,11 @@ const HomePage: React.FC = () => {
                       <Crown size={32} className="text-white" />
                     </div>
                   </div>
-                  <h3 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-dark-blue transition-colors">
-                    Pharmacy Three
+                  <h3 className="font-bold text-m text-gray-800 mb-2 group-hover:text-dark-blue transition-colors">
+                    Ahmed Khidr Pharmacy
                   </h3>
                   <p className="text-gray-500 text-sm flex items-center justify-center space-x-2">
-                    <span>Top Rated</span>
+
                   </p>
                 </div>
               </div>
@@ -141,7 +141,7 @@ const HomePage: React.FC = () => {
               <div className="card card-hover overflow-hidden">
                 <div className="relative h-40 overflow-hidden">
                   <img
-                    src="https://via.placeholder.com/150"
+                    src="https://i.ibb.co/b5Hv44D9/pharmalogo.png"
                     alt="Pharmacy 4 Logo"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
@@ -153,11 +153,11 @@ const HomePage: React.FC = () => {
                       <Crown size={32} className="text-white" />
                     </div>
                   </div>
-                  <h3 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-dark-blue transition-colors">
-                    Pharmacy Four
-                  </h3>
+                  <h6 className="font-bold text-m text-gray-800 mb-2 group-hover:text-dark-blue transition-colors">
+                    Rasha Emara Pharmacy
+                  </h6>
                   <p className="text-gray-500 text-sm flex items-center justify-center space-x-2">
-                    <span>Top Rated</span>
+
                   </p>
                 </div>
               </div>
@@ -167,7 +167,7 @@ const HomePage: React.FC = () => {
               <div className="card card-hover overflow-hidden">
                 <div className="relative h-40 overflow-hidden">
                   <img
-                    src="https://via.placeholder.com/150"
+                    src="https://i.ibb.co/b5Hv44D9/pharmalogo.png"
                     alt="Pharmacy 5 Logo"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
@@ -179,11 +179,10 @@ const HomePage: React.FC = () => {
                       <Crown size={32} className="text-white" />
                     </div>
                   </div>
-                  <h3 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-dark-blue transition-colors">
-                    Pharmacy Five
+                  <h3 className="font-bold text-md text-gray-800 mb-2 group-hover:text-dark-blue transition-colors">
+                    Hend AbduAllah Pharmacy
                   </h3>
                   <p className="text-gray-500 text-sm flex items-center justify-center space-x-2">
-                    <span>Top Rated</span>
                   </p>
                 </div>
               </div>
@@ -193,7 +192,7 @@ const HomePage: React.FC = () => {
               <div className="card card-hover overflow-hidden">
                 <div className="relative h-40 overflow-hidden">
                   <img
-                    src="https://via.placeholder.com/150"
+                    src="https://i.ibb.co/b5Hv44D9/pharmalogo.png"
                     alt="Pharmacy 6 Logo"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
@@ -205,11 +204,10 @@ const HomePage: React.FC = () => {
                       <Crown size={32} className="text-white" />
                     </div>
                   </div>
-                  <h3 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-dark-blue transition-colors">
-                    Pharmacy Six
+                  <h3 className="font-bold text-md text-gray-800 mb-2 group-hover:text-dark-blue transition-colors">
+                    Al Eman Pharmacy
                   </h3>
                   <p className="text-gray-500 text-sm flex items-center justify-center space-x-2">
-                    <span>Top Rated</span>
                   </p>
                 </div>
               </div>

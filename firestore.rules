@@ -134,28 +134,25 @@ service cloud.firestore {
                      request.auth.uid == resource.data.pharmacyId &&
                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Pharmacy';
 
-      // Allow delivery personnel to read orders assigned to them or unassigned orders with status Pending or Shipped
-      allow read: if request.auth != null && 
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Delivery' &&
-                     (resource.data.status == 'Pending' || resource.data.status == 'Shipped') &&
-                     (resource.data.deliverymanId == request.auth.uid || resource.data.deliverymanId == null);
+      // Allow delivery personnel to read all orders
+      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Delivery';
 
       // Allow delivery personnel to update status, deliverymanId, deliverymanName, shippedAt
       // Only if the order is pending and they are claiming it or it's already assigned to them
-      allow update: if request.auth != null && 
+      allow update: if request.auth != null &&
                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Delivery' &&
-                      resource.data.status == 'Pending' &&
-                      (request.resource.data.status == 'Shipped') && // Only allow status change to 'Shipped'
-                      (request.resource.data.deliverymanId == request.auth.uid) && // Must assign to self
-                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'deliverymanId', 'deliverymanName', 'shippedAt']));
+                      resource.data.status == 'Pending' && // Order must currently be Pending
+                      request.resource.data.status == 'Shipped' && // Only allow status change to 'Shipped'
+                      request.resource.data.deliverymanId == request.auth.uid && // Must assign to self
+                      request.resource.data.deliverymanName is string && // Check deliverymanName is a string
+                      request.resource.data.shippedAt is string; // Check shippedAt is a string
 
-      // Allow pharmacies to update status (e.g., to 'Cancelled' or 'Delivered' if they manage delivery)
-      // For simplicity, let's allow pharmacies to update status to 'Cancelled' or 'Delivered'
+      // Allow pharmacies to update status to 'Shipped', 'Cancelled' or 'Delivered'
       allow update: if request.auth != null &&
                       request.auth.uid == resource.data.pharmacyId &&
                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Pharmacy' &&
-                      (request.resource.data.status == 'Cancelled' || request.resource.data.status == 'Delivered') &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+                      (request.resource.data.status == 'Shipped' || request.resource.data.status == 'Cancelled' || request.resource.data.status == 'Delivered') &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'shippedAt']); // Allow updating 'status' and 'shippedAt'
 
       // Deny direct deletion of orders
       allow delete: if false;
@@ -170,7 +167,7 @@ service cloud.firestore {
     // ─── Pharmacies ────────────────────────────────────────────────────────────
     // Allow authenticated users to read pharmacy data.
     // Only the pharmacy owner can update their pharmacy data.
-ic    match /pharmacies/{pharmacyId} {
+      match /pharmacies/{pharmacyId} {
       allow read: if true; // Allow public read access for pharmacy profiles
       allow create: if request.auth != null;
       allow update: if request.auth != null && request.auth.uid == pharmacyId;
