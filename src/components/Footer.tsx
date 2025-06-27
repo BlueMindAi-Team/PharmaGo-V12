@@ -12,14 +12,13 @@ const Footer: React.FC = () => {
           {/* Company Info */}
           <div className="flex flex-col items-start">
             <div className="flex items-center space-x-3 mb-4">
-<img
-  src="https://i.ibb.co/N6br8w1K/IMG-2493.png"
-  alt="PharmaGo Logo"
-  className="w-14 h-14 rounded-xl shadow-lg"
-/>
+              <img
+                src="https://i.ibb.co/N6br8w1K/IMG-2493.png"
+                alt="PharmaGo Logo"
+                className="w-14 h-14 rounded-xl shadow-lg"
+              />
               <div>
                 <h3 className="text-3xl font-extrabold text-white">PharmaGo</h3>
-                
               </div>
             </div>
             <p className="text-gray-400 leading-relaxed mb-6">
@@ -87,14 +86,14 @@ const Footer: React.FC = () => {
             <div className="mt-8">
               <h5 className="font-semibold mb-3 text-white">Download Our App</h5>
               <div className="flex space-x-3">
-<button className="bg-blue-600 text-white w-32 flex items-center justify-center py-2.5 rounded-lg text-base font-medium hover:bg-blue-700 transition-colors duration-300 shadow-md">
-  <img src="https://i.ibb.co/Q7PBhJdM/app-store-icon-1760x2048-2rb6f013.png" alt="App Store Icon" className="w-6 h-6 mr-2 inline-block" />
-  App Store
-</button>
-<button className="bg-green-600 text-white w-32 flex items-center justify-center py-2.5 rounded-lg text-base font-medium hover:bg-green-700 transition-colors duration-300 shadow-md">
-  <img src="https://i.ibb.co/rG0kx8h5/google-play-store-icon-logo-symbol-free-png-removebg-preview.png" alt="Google Play Icon" className="w-6 h-6 mr-2 inline-block" />
-  Google Play
-</button>
+                <button className="bg-blue-600 text-white w-32 flex items-center justify-center py-2.5 rounded-lg text-base font-medium hover:bg-blue-700 transition-colors duration-300 shadow-md">
+                  <img src="https://i.ibb.co/Q7PBhJdM/app-store-icon-1760x2048-2rb6f013.png" alt="App Store Icon" className="w-6 h-6 mr-2 inline-block" />
+                  App Store
+                </button>
+                <button className="bg-green-600 text-white w-32 flex items-center justify-center py-2.5 rounded-lg text-base font-medium hover:bg-green-700 transition-colors duration-300 shadow-md">
+                  <img src="https://i.ibb.co/rG0kx8h5/google-play-store-icon-logo-symbol-free-png-removebg-preview.png" alt="Google Play Icon" className="w-6 h-6 mr-2 inline-block" />
+                  Google Play
+                </button>
               </div>
             </div>
           </div>
@@ -102,10 +101,16 @@ const Footer: React.FC = () => {
 
         {/* Bottom Bar */}
         <div className="border-t border-gray-700 mt-12 pt-8">
+          {/* Team Members */}
+          <div className="text-center text-gray-400 text-sm mb-6">
+            Ahmed Helmy, Yaseen Alawamy, Omar Khaled, Yousef Ayman
+          </div>
+
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-500 text-sm mb-4 md:mb-0">
               © {new Date().getFullYear()} PharmaGo. All rights reserved.
-            </div> 
+            </div>
+
             <div className="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">
               <a href="/privacy-policy" className="text-gray-500 hover:text-white transition-colors duration-300">Privacy Policy</a>
               <a href="/terms-of-service" className="text-gray-500 hover:text-white transition-colors duration-300">Terms of Service</a>
