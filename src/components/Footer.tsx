@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Youtube } from 'lucide-react';
+import { Mail, Phone, Facebook, Instagram, Youtube } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const Footer: React.FC = () => {
@@ -100,21 +100,26 @@ const Footer: React.FC = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-700 mt-12 pt-8">
-          {/* Team Members */}
-          <div className="text-center text-gray-400 text-sm mb-6">
-            Ahmed Helmy, Yaseen Alawamy, Omar Khaled, Yousef Ayman
+        <div className="mt-12">
+          {/* Team Members with Icons */}
+          <div className="text-center text-gray-400 text-sm flex items-center justify-center space-x-2 mb-6">
+            <span className="text-lg">💻</span>
+            <span>Ahmed Helmy, Yaseen Alawamy, Omar Khaled, Yousef Ayman</span>
+            <span className="text-lg">👨‍💻</span>
           </div>
 
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-gray-500 text-sm mb-4 md:mb-0">
-              © {new Date().getFullYear()} PharmaGo. All rights reserved.
-            </div>
+          {/* Separator UNDER the names */}
+          <div className="border-t border-gray-700 pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="text-gray-500 text-sm mb-4 md:mb-0">
+                © {new Date().getFullYear()} PharmaGo. All rights reserved.
+              </div>
 
-            <div className="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">
-              <a href="/privacy-policy" className="text-gray-500 hover:text-white transition-colors duration-300">Privacy Policy</a>
-              <a href="/terms-of-service" className="text-gray-500 hover:text-white transition-colors duration-300">Terms of Service</a>
-              <a href="/center" className="text-gray-500 hover:text-white transition-colors duration-300">Help Center</a>
+              <div className="flex flex-wrap justify-center md:justify-end space-x-6 text-sm">
+                <a href="/privacy-policy" className="text-gray-500 hover:text-white transition-colors duration-300">Privacy Policy</a>
+                <a href="/terms-of-service" className="text-gray-500 hover:text-white transition-colors duration-300">Terms of Service</a>
+                <a href="/center" className="text-gray-500 hover:text-white transition-colors duration-300">Help Center</a>
+              </div>
             </div>
           </div>
         </div>
